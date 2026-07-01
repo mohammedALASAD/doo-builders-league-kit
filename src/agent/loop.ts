@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { LlmClient } from "../llm/client.js";
+import type { LlmClientLike } from "../llm/client.js";
 import type { ToolRegistry } from "../tools/registry.js";
 import type { AuditEntry, ToolDefinition } from "../types.js";
 
@@ -10,7 +10,7 @@ export type ApprovalFn = (tool: ToolDefinition, input: unknown) => boolean | Pro
 const autoApproveNonRisky: ApprovalFn = (tool) => !tool.risky;
 
 export interface AgentLoopOptions {
-  llm: LlmClient;
+  llm: LlmClientLike;
   tools: ToolRegistry;
   systemPrompt?: string;
   maxSteps?: number;
@@ -30,7 +30,7 @@ export interface AgentRunResult {
  * can render or export the audit trail regardless of how the run ends.
  */
 export class AgentLoop {
-  private llm: LlmClient;
+  private llm: LlmClientLike;
   private tools: ToolRegistry;
   private systemPrompt?: string;
   private maxSteps: number;
@@ -50,6 +50,7 @@ export class AgentLoop {
 
   async run(userInput: string): Promise<AgentRunResult> {
     this.messages.push({ role: "user", content: userInput });
+    const auditStart = this.audit.length;
 
     for (let step = 1; step <= this.maxSteps; step++) {
       const response = await this.llm.createMessage({
@@ -69,7 +70,7 @@ export class AgentLoop {
           .filter((b): b is Anthropic.TextBlock => b.type === "text")
           .map((b) => b.text)
           .join("\n");
-        return { reply: text, steps: step, audit: this.audit };
+        return { reply: text, steps: step, audit: this.audit.slice(auditStart) };
       }
 
       const toolResults: Anthropic.ToolResultBlockParam[] = [];
@@ -105,7 +106,7 @@ export class AgentLoop {
     return {
       reply: `Stopped after hitting the ${this.maxSteps}-step guard without a final answer.`,
       steps: this.maxSteps,
-      audit: this.audit,
+      audit: this.audit.slice(auditStart),
     };
   }
 }

@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { LlmClient } from "../llm/client.js";
+import { MockLlmClient } from "../llm/mock-client.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { getCurrentTime, sendWhatsappMessage } from "../tools/examples.js";
 import { MemoryStore } from "../memory/store.js";
@@ -9,6 +10,7 @@ import { AgentLoop } from "../agent/loop.js";
 import type { ToolDefinition } from "../types.js";
 
 const dryRun = process.argv.includes("--dry-run");
+const mock = process.argv.includes("--mock");
 
 const tools = new ToolRegistry();
 tools.register(getCurrentTime);
@@ -29,7 +31,7 @@ async function approveInTerminal(tool: ToolDefinition, input: unknown): Promise<
 }
 
 const agent = new AgentLoop({
-  llm: new LlmClient(),
+  llm: mock ? new MockLlmClient() : new LlmClient(),
   tools,
   systemPrompt: "You are a helpful support agent for DOO. Be concise.",
   maxSteps: 8,
@@ -37,7 +39,9 @@ const agent = new AgentLoop({
   approve: approveInTerminal,
 });
 
-console.log(`doo-agent-kit CLI${dryRun ? " (dry-run mode)" : ""} — type "exit" to quit.\n`);
+console.log(
+  `doo-agent-kit CLI${dryRun ? " (dry-run mode)" : ""}${mock ? " (mock LLM — no API key, no cost)" : ""} — type "exit" to quit.\n`,
+);
 
 while (true) {
   const input = await rl.question("you> ");

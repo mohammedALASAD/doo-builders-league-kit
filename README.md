@@ -6,10 +6,15 @@ Reusable AI-agent starter kit for the DOO Builders League selection day.
 
 ```bash
 npm install
-cp .env.example .env   # fill in ANTHROPIC_API_KEY
-npm run dev             # CLI chat loop
+npm run dev -- --mock     # no API key needed — canned LLM responses, real tool/approval/audit loop
+cp .env.example .env      # fill in ANTHROPIC_API_KEY when you're ready to pay for real API access
+npm run dev                # CLI chat loop (real LLM)
 npm run dev -- --dry-run  # same, but risky tools simulate instead of executing
 ```
+
+Note: a Claude Pro subscription does **not** include API access — `ANTHROPIC_API_KEY` is billed
+separately via console.anthropic.com. Use `--mock` to build and test the whole kit for free; only
+fund a real key when you need genuine LLM reasoning (a full test session costs fractions of a cent).
 
 ## Layout
 
