@@ -4,7 +4,7 @@ import { stdin, stdout } from "node:process";
 import { LlmClient } from "../llm/client.js";
 import { MockLlmClient } from "../llm/mock-client.js";
 import { ToolRegistry } from "../tools/registry.js";
-import { getCurrentTime, sendWhatsappMessage } from "../tools/examples.js";
+import { getCurrentTime, lookupOrder, sendWhatsappMessage } from "../tools/examples.js";
 import { MemoryStore } from "../memory/store.js";
 import { AgentLoop } from "../agent/loop.js";
 import type { ToolDefinition } from "../types.js";
@@ -15,6 +15,7 @@ const mock = process.argv.includes("--mock");
 const tools = new ToolRegistry();
 tools.register(getCurrentTime);
 tools.register(sendWhatsappMessage);
+tools.register(lookupOrder);
 
 const memory = new MemoryStore("memory.json");
 await memory.load();
@@ -54,6 +55,14 @@ while (true) {
     console.log(`[audit] ${result.audit.length} tool call(s) this turn:`);
     for (const entry of result.audit) {
       console.log(`  - ${entry.tool} approved=${entry.approved} ok=${entry.result.ok}`);
+    }
+    console.log("");
+  }
+
+  if (result.reflections.length > 0) {
+    console.log(`[reflect] ${result.reflections.length} plan revision(s) triggered:`);
+    for (const r of result.reflections) {
+      console.log(`  - step ${r.step}: ${r.reason}`);
     }
     console.log("");
   }

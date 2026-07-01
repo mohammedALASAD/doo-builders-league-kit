@@ -1,3 +1,4 @@
+
 import type Anthropic from "@anthropic-ai/sdk";
 import type { LlmClientLike } from "./client.js";
 
@@ -15,11 +16,18 @@ export class MockLlmClient implements LlmClientLike {
     maxTokens?: number;
   }): Promise<Anthropic.Message> {
     const last = params.messages[params.messages.length - 1];
-    const respondingToToolResult =
-      !!last && Array.isArray(last.content) && last.content.some((b: any) => b?.type === "tool_result");
+    const lastBlocks = Array.isArray(last?.content) ? (last!.content as any[]) : [];
+    const respondingToToolResult = lastBlocks.some((b) => b?.type === "tool_result");
+    const sawFailure = lastBlocks.some((b) => b?.type === "tool_result" && b.is_error);
 
     const content = respondingToToolResult
-      ? [textBlock("[mock] Tool ran — see the audit log below. (No real LLM was called; drop --mock with a funded ANTHROPIC_API_KEY for real reasoning.)")]
+      ? [
+          textBlock(
+            sawFailure
+              ? "[mock] Noticed that failed — that's the reflection/re-planning pattern reacting. A real LLM would revise its plan here (e.g. double-check the ID with the user, or try a different lookup) instead of repeating the same call."
+              : "[mock] Tool ran — see the audit log below. (No real LLM was called; drop --mock with a funded ANTHROPIC_API_KEY for real reasoning.)",
+          ),
+        ]
       : this.planFrom(latestUserText(params.messages));
 
     return {
@@ -42,6 +50,10 @@ export class MockLlmClient implements LlmClientLike {
       const to = text.match(/(\+?\d[\d\s-]{6,}\d)/)?.[1]?.trim() ?? "+97300000000";
       const body = text.match(/(?:saying|that says)\s+(.+)$/i)?.[1]?.trim() ?? text;
       return [toolUseBlock("send_whatsapp_message", { to, body })];
+    }
+    if (/order/i.test(text)) {
+      const orderId = text.match(/order\s*(?:id\s*)?[:#]?\s*([\w-]+)/i)?.[1] ?? "ORD-1234";
+      return [toolUseBlock("lookup_order", { orderId })];
     }
     return [
       textBlock(

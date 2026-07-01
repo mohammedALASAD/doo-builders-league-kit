@@ -20,7 +20,7 @@ fund a real key when you need genuine LLM reasoning (a full test session costs f
 
 - `src/llm/client.ts` — thin wrapper around the Anthropic SDK. Swap providers here only.
 - `src/tools/registry.ts` — register/execute tools; add a new one in `src/tools/*.ts` and `register()` it in `src/cli/index.ts`.
-- `src/agent/loop.ts` — plan → act → observe loop. Handles the max-step guard, the approval gate (guardrail), dry-run mode, and the audit log.
+- `src/agent/loop.ts` — plan → act → observe loop. Handles the max-step guard, the approval gate (guardrail), dry-run mode, the audit log, and reflection/re-planning (detects when a step's tool results diverge from the plan — default: any tool failure — and injects a re-planning nudge instead of blindly continuing).
 - `src/memory/store.ts` — confidence-tagged fact store, optionally persisted to `memory.json`.
 - `src/cli/index.ts` — CLI entrypoint; wires everything together, prompts for approval on risky tools.
 

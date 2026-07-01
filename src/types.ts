@@ -32,6 +32,14 @@ export interface AuditEntry {
   dryRun: boolean;
 }
 
+/** Emitted when a step's tool outcomes diverge from what the plan assumed —
+ * see ReflectionTrigger in agent/loop.ts. */
+export interface ReflectionEvent {
+  step: number;
+  timestamp: string;
+  reason: string;
+}
+
 export interface MemoryFact {
   key: string;
   value: unknown;

@@ -31,3 +31,24 @@ export const sendWhatsappMessage: ToolDefinition<{ to: string; body: string }> =
     return { ok: true, output: { sent: true, to: input.to, body: input.body } };
   },
 };
+
+/** Stands in for a CRM/ecommerce order lookup. Fails on purpose for IDs
+ * containing "999" so there's a concrete, repeatable way to trigger the
+ * reflection/re-planning pattern in agent/loop.ts without needing a real LLM. */
+export const lookupOrder: ToolDefinition<{ orderId: string }> = {
+  name: "lookup_order",
+  description: "Look up an order's status by order ID in the CRM/ecommerce system.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      orderId: { type: "string", description: "Order ID, e.g. ORD-1234" },
+    },
+    required: ["orderId"],
+  },
+  async run(input) {
+    if (input.orderId.includes("999")) {
+      return { ok: false, output: null, error: `Order ${input.orderId} not found` };
+    }
+    return { ok: true, output: { orderId: input.orderId, status: "shipped", eta: "2 days" } };
+  },
+};
