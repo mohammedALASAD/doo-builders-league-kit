@@ -4,7 +4,7 @@ import { stdin, stdout } from "node:process";
 import { LlmClient } from "../llm/client.js";
 import { MockLlmClient } from "../llm/mock-client.js";
 import { ToolRegistry } from "../tools/registry.js";
-import { getCurrentTime, lookupOrder, sendWhatsappMessage } from "../tools/examples.js";
+import { getCurrentTime, lookupOrder, offerCompensation, sendWhatsappMessage } from "../tools/examples.js";
 import { createMemoryTools } from "../tools/memory.js";
 import { MemoryStore } from "../memory/store.js";
 import { AgentLoop } from "../agent/loop.js";
@@ -20,6 +20,7 @@ const tools = new ToolRegistry();
 tools.register(getCurrentTime);
 tools.register(sendWhatsappMessage);
 tools.register(lookupOrder);
+tools.register(offerCompensation);
 for (const tool of createMemoryTools(memory)) tools.register(tool);
 
 const rl = createInterface({ input: stdin, output: stdout });
@@ -81,3 +82,4 @@ if (uncertain.length > 0) {
 }
 
 rl.close();
+

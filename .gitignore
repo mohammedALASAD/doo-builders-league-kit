@@ -3,3 +3,4 @@ dist
 .env
 *.log
 memory.json
+.claude/settings.local.json
