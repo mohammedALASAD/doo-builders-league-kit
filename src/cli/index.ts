@@ -5,6 +5,7 @@ import { LlmClient } from "../llm/client.js";
 import { MockLlmClient } from "../llm/mock-client.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { getCurrentTime, lookupOrder, sendWhatsappMessage } from "../tools/examples.js";
+import { createMemoryTools } from "../tools/memory.js";
 import { MemoryStore } from "../memory/store.js";
 import { AgentLoop } from "../agent/loop.js";
 import type { ToolDefinition } from "../types.js";
@@ -12,13 +13,14 @@ import type { ToolDefinition } from "../types.js";
 const dryRun = process.argv.includes("--dry-run");
 const mock = process.argv.includes("--mock");
 
+const memory = new MemoryStore("memory.json");
+await memory.load();
+
 const tools = new ToolRegistry();
 tools.register(getCurrentTime);
 tools.register(sendWhatsappMessage);
 tools.register(lookupOrder);
-
-const memory = new MemoryStore("memory.json");
-await memory.load();
+for (const tool of createMemoryTools(memory)) tools.register(tool);
 
 const rl = createInterface({ input: stdin, output: stdout });
 
@@ -69,4 +71,13 @@ while (true) {
 }
 
 await memory.save();
+
+const uncertain = memory.lowConfidence();
+if (uncertain.length > 0) {
+  console.log(`[memory] ${uncertain.length} fact(s) below confidence threshold — worth reconfirming next time:`);
+  for (const f of uncertain) {
+    console.log(`  - ${f.key}: ${JSON.stringify(f.value)} (confidence ${f.confidence})`);
+  }
+}
+
 rl.close();

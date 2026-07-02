@@ -55,6 +55,14 @@ export class MockLlmClient implements LlmClientLike {
       const orderId = text.match(/order\s*(?:id\s*)?[:#]?\s*([\w-]+)/i)?.[1] ?? "ORD-1234";
       return [toolUseBlock("lookup_order", { orderId })];
     }
+    const remember = text.match(/remember (?:that )?([\w-]+) is (.+)$/i);
+    if (remember) {
+      return [toolUseBlock("remember_fact", { key: remember[1], value: remember[2].trim(), confidence: 0.9 })];
+    }
+    const recall = text.match(/(?:recall|what do you know about)\s+([\w-]+)\??$/i);
+    if (recall) {
+      return [toolUseBlock("recall_fact", { key: recall[1] })];
+    }
     return [
       textBlock(
         `[mock] No real LLM connected — canned reply to: "${text}". Set ANTHROPIC_API_KEY and drop --mock for real reasoning.`,
