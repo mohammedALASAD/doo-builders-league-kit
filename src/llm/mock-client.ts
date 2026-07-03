@@ -9,6 +9,11 @@ import type { LlmClientLike } from "./client.js";
  * be built and tested before spending real API credits.
  */
 export class MockLlmClient implements LlmClientLike {
+  /** Cheap state so the mock can chain a multi-turn flow (lookup -> otp -> retention ->
+   * cancel) without real reasoning — just enough to smoke-test tool wiring for free. */
+  private lastSubscriptionId: string | null = null;
+  private lastReason: string | null = null;
+
   async createMessage(params: {
     system?: string;
     messages: Anthropic.MessageParam[];
@@ -63,6 +68,47 @@ export class MockLlmClient implements LlmClientLike {
     if (recall) {
       return [toolUseBlock("recall_fact", { key: recall[1] })];
     }
+
+    // --- subscription cancellation flow ---
+    const reasonMatch = text.match(/(?:because|reason(?:\s+is)?:?)\s+(.+)$/i);
+    if (reasonMatch) this.lastReason = reasonMatch[1].trim();
+
+    const otpCode = text.match(/\b(\d{6})\b/)?.[1];
+    if (otpCode) {
+      return [toolUseBlock("verify_otp", { subscriptionId: this.lastSubscriptionId ?? "SUB-1001", code: otpCode })];
+    }
+    if (/cancel/i.test(text) && /\b(confirm|proceed|still want|go ahead|yes)\b/i.test(text)) {
+      return [
+        toolUseBlock("cancel_subscription", {
+          subscriptionId: this.lastSubscriptionId ?? "SUB-1001",
+          reason: this.lastReason ?? undefined,
+        }),
+      ];
+    }
+    if (/retention|discount|free month|stay with us/i.test(text)) {
+      const freeMonth = /free month/i.test(text);
+      return [
+        toolUseBlock("offer_retention_deal", {
+          subscriptionId: this.lastSubscriptionId ?? "SUB-1001",
+          type: freeMonth ? "free_month" : "discount",
+          percentOff: freeMonth ? undefined : 15,
+        }),
+      ];
+    }
+    if (/eligib|can i cancel|qualify/i.test(text)) {
+      return [toolUseBlock("check_cancellation_eligibility", { subscriptionId: this.lastSubscriptionId ?? "SUB-1001" })];
+    }
+    if (/\b(otp|one[- ]time code|verify my identity|send.*code)\b/i.test(text)) {
+      return [toolUseBlock("send_otp", { subscriptionId: this.lastSubscriptionId ?? "SUB-1001" })];
+    }
+    if (/cancel/i.test(text) && /(subscription|service|plan)/i.test(text)) {
+      const subId = text.match(/SUB-\d+/i)?.[0]?.toUpperCase();
+      const phone = text.match(/(\+?\d[\d\s-]{6,}\d)/)?.[1]?.trim();
+      const id = subId ?? this.lastSubscriptionId ?? "SUB-1001";
+      this.lastSubscriptionId = id;
+      return [toolUseBlock("lookup_subscription", { customerIdOrPhone: phone ?? id })];
+    }
+
     return [
       textBlock(
         `[mock] No real LLM connected — canned reply to: "${text}". Set ANTHROPIC_API_KEY and drop --mock for real reasoning.`,

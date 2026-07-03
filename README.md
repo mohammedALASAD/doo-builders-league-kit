@@ -19,7 +19,12 @@ fund a real key when you need genuine LLM reasoning (a full test session costs f
 ## Layout
 
 - `src/llm/client.ts` — thin wrapper around the Anthropic SDK. Swap providers here only.
+- `src/llm/mock-client.ts` — canned-response stand-in for `LlmClient`, used by `--mock`. Keyword-matches user text to drive the same tool-call loop for free.
 - `src/tools/registry.ts` — register/execute tools; add a new one in `src/tools/*.ts` and `register()` it in `src/cli/index.ts`.
+- `src/tools/examples.ts` — order lookup/compensation demo tools (delayed-order support flow).
+- `src/tools/subscription.ts` — subscription cancellation demo tools: soft lookup, hard OTP verification, retention offer, eligibility check, and cancellation. Every guardrail (OTP required, one retention offer, eligibility) is enforced in the tool code itself, not just prompted — see the comments for why. Live state persists to `subscriptions.json` (gitignored), so changes survive restarting the CLI.
+- `docs/cancellation-policy.md` — the actual policy the LLM is given for the cancellation flow, loaded into the system prompt at startup. The tools re-check everything it describes rather than trusting the LLM's read of it.
+- `src/compliance/log.ts` — permanent record of rejected cancellation attempts (failed identity verification or failed eligibility), persisted to `compliance-log.json` (gitignored) so it survives restarts and can't be skipped just because the LLM answers from context instead of calling the enforcing tool.
 - `src/agent/loop.ts` — plan → act → observe loop. Handles the max-step guard, the approval gate (guardrail), dry-run mode, the audit log, and reflection/re-planning (detects when a step's tool results diverge from the plan — default: any tool failure — and injects a re-planning nudge instead of blindly continuing).
 - `src/memory/store.ts` — confidence-tagged fact store, optionally persisted to `memory.json`. Exposed to the agent as tools in `src/tools/memory.ts` (`remember_fact` / `recall_fact`); facts below the confidence threshold are flagged when the CLI exits.
 - `src/cli/index.ts` — CLI entrypoint; wires everything together, prompts for approval on risky tools.
