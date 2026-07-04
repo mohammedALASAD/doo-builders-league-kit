@@ -201,7 +201,34 @@ export const recordDecision: ToolDefinition<DecisionRecord> = {
     ],
   },
   async run(input) {
-    decisions.push(input);
+    // The model has sent an incomplete call before (e.g. only requestId, no other
+    // fields) mid-batch, then corrected itself on a later turn — don't trust the
+    // shape blindly, or a broken entry sits in the decision screen. Reject and let
+    // it retry instead of silently recording garbage.
+    const REQUIRED_FIELDS = [
+      "requestId",
+      "priority",
+      "confidence",
+      "recommendedAction",
+      "owner",
+      "suggestedResponse",
+      "reason",
+    ] as const;
+    const missing = REQUIRED_FIELDS.filter((f) => input[f] === undefined || input[f] === null || input[f] === "");
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        output: null,
+        error: `record_decision is missing required field(s): ${missing.join(", ")}. Call it again with every field filled in.`,
+      };
+    }
+    // A retry/nudge can re-record the same request — replace rather than duplicate.
+    const existingIndex = decisions.findIndex((d) => d.requestId === input.requestId);
+    if (existingIndex >= 0) {
+      decisions[existingIndex] = input;
+    } else {
+      decisions.push(input);
+    }
     return { ok: true, output: { recorded: input.requestId } };
   },
 };

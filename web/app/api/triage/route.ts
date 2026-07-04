@@ -74,7 +74,21 @@ When all requests are recorded, give a short paragraph summarizing your overall 
       (r.refundAmount ? ` (amount in question: $${r.refundAmount})` : ""),
   ).join("\n");
 
-  const result = await agent.run(`Here is today's request queue:\n\n${batch}`);
+  let result = await agent.run(`Here is today's request queue:\n\n${batch}`);
+
+  // The model sometimes pauses mid-batch to narrate a phase transition in plain text
+  // ("Now let me proceed to Phase 2...") with no tool calls in that turn — AgentLoop
+  // treats any text-only turn as the final answer, which would cut the run short
+  // before record_decision has been called for everything. Nudge it to keep going
+  // (same agent instance, so its own conversation history carries over) until the
+  // decision screen is actually complete.
+  let nudges = 0;
+  while (decisions.length < REQUESTS.length && nudges < 4) {
+    nudges++;
+    result = await agent.run(
+      `You still need to record a decision for every request — ${decisions.length}/${REQUESTS.length} done so far. Continue: take the right action and call record_decision for each remaining request now.`,
+    );
+  }
 
   const requestsById = Object.fromEntries(REQUESTS.map((r) => [r.id, r]));
   const sortedDecisions = [...decisions]
