@@ -2,10 +2,12 @@ const path = require("path");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Avoids Next inferring an unrelated lockfile elsewhere on this machine as the
-  // workspace root — irrelevant on Vercel (only the repo is checked out there),
-  // but keeps local builds/dev clean too.
-  outputFileTracingRoot: __dirname,
+  // Deliberately NOT setting outputFileTracingRoot — it's tempting to silence a
+  // local-only warning about an unrelated lockfile in the home directory, but
+  // Vercel computes this path itself relative to Root Directory, and overriding it
+  // manually broke that (Vercel started looking for .next one level too high:
+  // /vercel/path0/.next instead of /vercel/path0/web/.next). The local warning is
+  // harmless; this isn't.
   webpack(config) {
     // The shared kit under ../src uses NodeNext-style imports ("./data.js" pointing
     // at data.ts) so tsx/tsc resolve it for the CLI. Make webpack resolve the same way.
