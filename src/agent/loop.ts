@@ -42,6 +42,10 @@ export interface AgentLoopOptions {
    * tool failure; pass your own to react to domain-specific "reality changed"
    * signals. */
   reflect?: ReflectionTrigger;
+  /** Optional live hook fired right after each tool call resolves — lets a
+   * caller print progress as it happens instead of waiting for the whole
+   * run() to finish and reading the batched audit log. No-op by default. */
+  onToolCall?: (entry: AuditEntry) => void | Promise<void>;
 }
 
 export interface AgentRunResult {
@@ -67,6 +71,7 @@ export class AgentLoop {
   private dryRun: boolean;
   private approve: ApprovalFn;
   private reflect: ReflectionTrigger;
+  private onToolCall?: (entry: AuditEntry) => void | Promise<void>;
   private messages: Anthropic.MessageParam[] = [];
   readonly audit: AuditEntry[] = [];
   readonly reflections: ReflectionEvent[] = [];
@@ -79,6 +84,7 @@ export class AgentLoop {
     this.dryRun = opts.dryRun ?? false;
     this.approve = opts.approve ?? autoApproveNonRisky;
     this.reflect = opts.reflect ?? defaultReflectionTrigger;
+    this.onToolCall = opts.onToolCall;
   }
 
   async run(userInput: string): Promise<AgentRunResult> {
@@ -122,7 +128,7 @@ export class AgentLoop {
           ? await this.tools.execute(use.name, use.input, { dryRun: this.dryRun })
           : { ok: false, output: null, error: "Blocked: not approved by guardrail" };
 
-        this.audit.push({
+        const entry = {
           step,
           timestamp: new Date().toISOString(),
           tool: use.name,
@@ -130,7 +136,9 @@ export class AgentLoop {
           result,
           approved,
           dryRun: this.dryRun,
-        });
+        };
+        this.audit.push(entry);
+        await this.onToolCall?.(entry);
         outcomes.push({ tool: use.name, input: use.input, result });
 
         toolResults.push({

@@ -6,6 +6,7 @@
   "description": "Reusable AI-agent starter kit for DOO Builders League selection day",
   "scripts": {
     "dev": "tsx src/cli/index.ts",
+    "triage": "tsx src/triage/run.ts",
     "build": "tsc",
     "start": "node dist/cli/index.js"
   },
