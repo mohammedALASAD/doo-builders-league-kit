@@ -17,7 +17,10 @@ import {
 } from "../../../../src/triage/tools.js";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Demo mode (6 requests, more likely to hit the nudge-retry loop below) can run
+// noticeably longer than Scenario mode — 60s wasn't enough headroom and produced
+// a 504 in practice. Vercel caps this per-plan regardless of what's requested here.
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
