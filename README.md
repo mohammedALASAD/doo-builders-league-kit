@@ -34,3 +34,39 @@ fund a real key when you need genuine LLM reasoning (a full test session costs f
 1. Write a `ToolDefinition` in `src/tools/*.ts` (name, description, inputSchema, `run`). Mark `risky: true` if it has a real side effect.
 2. `tools.register(yourTool)` in `src/cli/index.ts`.
 3. Done — the LLM sees it automatically via `tools.toAnthropicTools()`.
+
+## Web triage dashboard (`web/`)
+
+A minimal Next.js app that renders the triage decision engine (`src/triage/*`) as a browser
+"decision screen" instead of a terminal. It imports the shared kit directly (`src/llm/client.ts`,
+`src/agent/loop.ts`, `src/tools/registry.ts`, `src/triage/*`) via relative paths — no duplicated
+logic. It's a separate, self-contained npm project so it doesn't interfere with the CLI's own
+`package.json`/build.
+
+Notable differences from the CLI's triage script (`src/triage/run.ts`):
+- Stateless per-request: `resetTriageState()` clears `decisions`/slot counts at the start of every
+  API call, since a serverless instance can be reused across requests.
+- No terminal to pause for approval or `ask_customer`/OTP relay — the API route auto-approves
+  every tool call (`approve: () => true`). The actual business rules (refund cap, identity checks
+  in `src/triage/tools.ts`) still enforce themselves regardless; only the *human-in-the-loop UI*
+  is dropped for this stateless demo, not the underlying rule.
+- Uses webpack, not Turbopack (Next 16's default) — see the comment in `web/next.config.js` for
+  why: Turbopack doesn't yet support the `.js`-import-resolves-to-`.ts`-file convention the shared
+  kit uses for NodeNext-style ESM.
+
+### Run it locally
+
+```bash
+cd web
+npm install
+cp ../.env .env.local   # needs ANTHROPIC_API_KEY
+npm run dev             # http://localhost:3000
+```
+
+### Deploy to Vercel
+
+1. Import this GitHub repo into Vercel.
+2. **Root Directory**: set it to `web` (Vercel asks for this during project import — this repo is
+   a CLI + a web app side by side, not a pure Next.js project at the root).
+3. Add an environment variable: `ANTHROPIC_API_KEY` (your Anthropic API key).
+4. Deploy. Vercel auto-detects Next.js from `web/package.json` once the root directory is set.

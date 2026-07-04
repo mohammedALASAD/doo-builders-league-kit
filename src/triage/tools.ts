@@ -20,6 +20,16 @@ export interface DecisionRecord {
 /** Filled in by record_decision — the source of truth for the decision screen. */
 export const decisions: DecisionRecord[] = [];
 
+/** The CLI is one-shot per process, so this never mattered there — but a serverless
+ * function instance can be reused across requests, and this module-level state would
+ * otherwise leak between them (stale decisions, depleted slots). Call at the start of
+ * every request. */
+export function resetTriageState(): void {
+  decisions.length = 0;
+  resourceState.appointmentSlotsLeftToday = BUSINESS_CONTEXT.appointmentSlotsLeftToday;
+  resourceState.staffAvailable = BUSINESS_CONTEXT.staffAvailable;
+}
+
 export const getResourceStatus: ToolDefinition = {
   name: "get_resource_status",
   description:
